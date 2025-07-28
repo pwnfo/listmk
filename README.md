@@ -58,4 +58,4 @@ ListMK is a versatile wordlist generator designed for simplicity and efficiency.
 
 ## AUTHOR
 
-ListMK was developed by [Ryan R.](https://github.com/ch0d).
+ListMK was developed by [Ryan R.](https://github.com/pwnfo).
