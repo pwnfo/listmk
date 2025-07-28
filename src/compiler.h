@@ -2,6 +2,7 @@
 
 #define _LISTMK_COMPILER_H
 #define NUM_TYPES 10
+#define MAX_REP_SIZE 32
 #define MAX_EXP_SIZE 200
 
 #include <stdio.h>

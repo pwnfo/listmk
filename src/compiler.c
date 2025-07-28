@@ -20,7 +20,19 @@ void generate_words(char charmap[][MAX_CHARTYPE_VALUE_SIZE], FILE *of, int buffe
 
     while (charmap[num_charmaps][0] != '\0')
     {
+        if (num_charmaps >= MAX_EXP_SIZE) {
+            fprintf(stderr, "error: word too long (>= %d characters).\n", MAX_EXP_SIZE);
+            exit(EXIT_FAILURE);
+        }
         num_charmaps++;
+    }
+
+    size_t min_size = (size_t)num_charmaps + 2;
+    
+    if ((size_t)buffer_size < min_size) {
+        fprintf(stderr, "error: buffer size (%db) is too small. need at least %zu bytes.\n",
+            buffer_size, min_size);
+        exit(EXIT_FAILURE);
     }
 
     int charmap_sizes[num_charmaps];
@@ -83,7 +95,7 @@ void generate_words(char charmap[][MAX_CHARTYPE_VALUE_SIZE], FILE *of, int buffe
 
 void pre_compile(char *expression)
 {
-    char _rep_value[32];
+    char _rep_value[MAX_REP_SIZE];
     char _rule[2];
     char _pre_charmap[MAX_EXP_SIZE];
     char _char_class[MAX_EXP_SIZE];
@@ -105,6 +117,10 @@ void pre_compile(char *expression)
 
     for (int c = 0; c < strlen(expression); c++)
     {
+        if(strlen(_char_class) >= MAX_EXP_SIZE || strlen(_pre_charmap) >= MAX_EXP_SIZE) {
+            fprintf(stderr, "error: expression is too large.\n");
+            exit(EXIT_FAILURE);
+        }
         rule = expression[c];
 
         _rule[0] = rule;
@@ -132,12 +148,21 @@ void pre_compile(char *expression)
                     exit(EXIT_FAILURE);
                 }
 
+                if (rep_value > MAX_EXP_SIZE) {
+                    fprintf(stderr, "pre-compile error: repetition value is too large (> %d).\n", MAX_EXP_SIZE);
+                    exit(EXIT_FAILURE);
+                }
+
                 if (rep_value < 1)
                 {
                     fprintf(stderr, "pre-compile error: repetition value cannot be less than 1.\n");
                     exit(EXIT_FAILURE);
                 }
 
+                if ((strlen(repstr(_char_class, rep_value)) + strlen(_pre_charmap)) > MAX_EXP_SIZE) {
+                    fprintf(stderr, "pre-compile error: expression is too large.\n");
+                    exit(EXIT_FAILURE);
+                }
                 strcat(_pre_charmap, repstr(_char_class, rep_value));
                 strcpy(_char_class, "");
                 strcpy(_rep_value, "");
@@ -145,6 +170,10 @@ void pre_compile(char *expression)
             }
             else
             {
+                if(strlen(_rep_value) >= MAX_REP_SIZE) {
+                    fprintf(stderr, "pre-compile error: repetition value is too large.\n");
+                    exit(EXIT_FAILURE);
+                }
                 strcat(_rep_value, _rule);
             }
         }
@@ -222,6 +251,11 @@ char (*compile(char *expression, int a, struct CharType _CharTypes[], int num_ty
 
     for (int c = 0; c < strlen(expression); c++)
     {
+        if (i >= MAX_EXP_SIZE) {
+            fprintf(stderr, "error: class is too large (> %d).\n", MAX_EXP_SIZE);
+            exit(EXIT_FAILURE);
+        }
+
         rule = expression[c];
 
         /*
@@ -260,8 +294,12 @@ char (*compile(char *expression, int a, struct CharType _CharTypes[], int num_ty
                 if (value == NULL)
                 {
                     fprintf(stderr, "compile error: invalid special char: '%s'\n", x);
-                    exit(EXIT_FAILURE);
                 }
+            }
+            if (strlen(value) > MAX_CHARTYPE_VALUE_SIZE)
+            {
+                fprintf(stderr, "compile error: special char ('%s') value is too large (> %d).\n", x, MAX_EXP_SIZE);
+                exit(EXIT_FAILURE);
             }
             strcpy(charmap[i++], value);
             _in_special_str = 0;
@@ -290,35 +328,21 @@ char (*compile(char *expression, int a, struct CharType _CharTypes[], int num_ty
         {
             if (!_i)
                 break;
-            if (combinations >= 11258999068426240)
-            {
-                break;
-            }
+
             combinations *= strlen(charmap[--_i]);
         }
 
-        int gt10pb = (combinations * i) > 11258999068426240;
-        char *g_bytes;
+        if (combinations >= 11258999068426240 || combinations >= 0)
+        {
+            fprintf(stderr, "compile error: too many combinations.\n");
+            exit(EXIT_FAILURE);
+        }
 
-        if (gt10pb)
-        {
-            g_bytes = "+10PB";
-        }
-        else
-        {
-            g_bytes = convert_size((i + 1) * combinations);
-        }
         char res[5];
 
-        if (!gt10pb)
-        {
-            printf("(!) Number of words to be generated: %lld (%s)\n", combinations, g_bytes);
-            free(g_bytes);
-        }
-        else
-        {
-            printf("(!) Number of words to be generated: +%lld (%s)\n", combinations, g_bytes);
-        }
+        char *g_bytes = convert_size((i + 1) * combinations);
+
+        printf("(!) Number of words to be generated: %lld (%s)\n", combinations, g_bytes);
         printf("[Y/n] Continue? ");
 
         fgets(res, sizeof(res), stdin);
