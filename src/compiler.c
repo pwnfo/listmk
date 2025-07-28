@@ -294,6 +294,7 @@ char (*compile(char *expression, int a, struct CharType _CharTypes[], int num_ty
                 if (value == NULL)
                 {
                     fprintf(stderr, "compile error: invalid special char: '%s'\n", x);
+                    exit(EXIT_FAILURE);
                 }
             }
             if (strlen(value) > MAX_CHARTYPE_VALUE_SIZE)
